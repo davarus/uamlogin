@@ -1,0 +1,47 @@
+REQUEST_METHOD
+	HEAD	(unsupported)
+	GET
+	POST
+		CONTENT_TYPE
+			application/x-www-form-urlencoded
+			multipart/form-data
+		CONTENT_LENGTH
+
+HTTP_COOKIE
+	name=value;name2=value2;...
+
+urlencoding
+	'&'	- variable seperator
+	'='	- variable name/value seperator
+	'+'	- space
+	"%hh"	- hex encoded character
+	see RFC1738
+
+cgi_init
+	-> methods (COOKIE/GET/POST/FILE)
+	-> maxform (max size of form data)
+	-> callback(type, name, value)
+
+cgi_close
+
+
+---- 
+
+struct form_variable {
+	const char *name;
+	char *value;
+	size_t *value_max;   /* input: sizeof(value);  output: actual length */
+};
+cgi_parse_cookies(form_variable[], num_variables);
+cgi_parse_query(form_variables[], num_variables);
+return 0 on success
+-1 on truncated data
+-2 on error
+
+----
+
+void callback (char const *name, void **buffer, size_t *maxlength)
+
+file
+	/* Content-Disposition */ const char *fieldname, *filename;
+	/* Content-Type */ const char *type; const char *(*attributes)[2];

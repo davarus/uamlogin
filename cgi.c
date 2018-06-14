@@ -56,10 +56,10 @@ char *cgi_urlencode (char const *in)
 	while (*in) {
 		if (isalnum(*in)) {
 			*out++ = *in++;
-		} else if (*in == ' ') {
-			/* TODO: This isn't right */
+		/* } else if (*in == ' ') {
+			// TODO: This isn't right
 			*out++ = '+';
-			in++;
+			in++; */
 		} else {
 			*out++ = '%';
 			*out++ = hex_digits[(*(unsigned char *)in >> 4) & 0xF];
@@ -105,7 +105,7 @@ static void cgi_urldecode (char *out, char const *in, void (*callback)(char cons
 			in++;
 		} else if (*in == '%') {
 			if (!in[1] || !in[2])
-				break;
+				break; /* TODO: */
 
 			*out++ = (hex_digit(in[1]) << 4) | hex_digit(in[2]);
 			in += 3;

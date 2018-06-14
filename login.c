@@ -23,6 +23,7 @@
  *       source distribution.
  */
 
+#include <stdlib.h>
 #include <stddef.h>
 #include <ctype.h>
 #include <string.h>
@@ -54,9 +55,8 @@ char const *uam_secret = "supersecret";
  *	redirurl
  */
 
-void hex_pack (void const *in_buf, void *out_buf, size_t len)
+void hex_pack (char const *in, void *out_buf, size_t len)
 {
-	const char *in = in_buf;
 	unsigned char *out = out_buf;
 	while (len--) {
 		unsigned char high, low, final;
@@ -88,11 +88,10 @@ void hex_pack (void const *in_buf, void *out_buf, size_t len)
 	}
 }
 
-void hex_unpack (void const *in_buf, void *out_buf, size_t len)
+void hex_unpack (void const *in_buf, char *out, size_t len)
 {
 	static char const * const hex = "0123456789ABCDEF";
 	unsigned char const *in = in_buf;
-	char *out = out_buf;
 	while (len--) {
 		unsigned char byte;
 		byte = *in++;
@@ -186,6 +185,10 @@ char const *template_callback (char const *var, void const *data)
 	return NULL;
 }
 
+/*
+TODO:
+ 	handle template_print() failures.
+*/
 int main (int argc, char **argv)
 {
 	(void)argc;
@@ -194,51 +197,54 @@ int main (int argc, char **argv)
 	memset(&pvl, 0, sizeof(pvl));
 	pvl.callback = template_callback;
 
-	puts("Content-type: text/html\n");
+	puts("Content-type: text/html");
+	puts("Pragma: no-cache");
+	puts("Cache-Control: no-cache");
+	puts("Expires: Thu, 01 Dec 1994 16:00:00 GMT");
+	/* puts("Last-Modified: Thu, 15 Nov 1994 12:45:26 GMT"); */
+	puts("");
 
-	/* NOTE: This leaks memory. */
+	/* Parse CGI */
 	if (cgi_parse(512, cgi_callback)) {
 		template_print("templates/error.html", stdout, &pvl);
 		return 0;
 	}
-
-	/* NOTE: These leak memory. */
 	if (uam_userurl)
 		query_userurl = cgi_urlencode(uam_userurl);
 	if (uam_redirurl)
 		query_redirurl = cgi_urlencode(uam_redirurl);
 
+	/* Valid UAM Request? */
 	if (!uam_ip || !uam_port) {
 		template_print("templates/error.html", stdout, &pvl);
+		free(uam_userurl);
+		free(uam_redirurl);
+		cgi_free();
 		return 0;
 	}
 
+	/* Response? */
 	if (uam_res) {
-		
-		if (!strcmp(uam_res, "success") || !strcmp(uam_res, "already")) {
-			template_print("templates/success.html", stdout, &pvl);
+		char *filename;
+
+		filename = malloc(strlen(uam_res) + 5 + 10 + 1);
+		if (!filename) {
+			template_print("templates/error.html", stdout, &pvl);
+			free(uam_userurl);
+			free(uam_redirurl);
+			cgi_free();
 			return 0;
 		}
-
-		if (!strcmp(uam_res, "logoff")) {
-			template_print("templates/logoff.html", stdout, &pvl);
-			return 0;
-		}
-
-		if (!strcmp(uam_res, "notyet")) {
-			template_print("templates/main.html", stdout, &pvl);
-			return 0;
-		}
-
-		if (!strcmp(uam_res, "failed")) {
-			template_print("templates/failed.html", stdout, &pvl);
-			return 0;
-		}
-
-		template_print("templates/error.html", stdout, &pvl);
+		sprintf(filename, "templates/%s.html", uam_res);
+		template_print(filename, stdout, &pvl);
+		free(filename);
+		free(uam_userurl);
+		free(uam_redirurl);
+		cgi_free();
 		return 0;
 	}
 
+	/* Authenticate! */
 	if (username && uam_challenge) {
 		md5_state_t pms;
 		md5_byte_t chal_packed[16];
@@ -282,9 +288,16 @@ int main (int argc, char **argv)
 		}
 
 		template_print("templates/login.html", stdout, &pvl);
+		free(uam_redirurl);
+		free(uam_userurl);
+		cgi_free();
 		return 0;
 	}
 
+	/* Oh NOES! */
 	template_print("templates/error.html", stdout, &pvl);
+	free(uam_redirurl);
+	free(uam_userurl);
+	cgi_free();
 	return 0;
 }

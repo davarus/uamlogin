@@ -1,4 +1,4 @@
-CFLAGS+=-Os -Wall -Wextra -pedantic -std=c89
+CFLAGS+=-DNDEBUG -Os -Wall -Wextra -pedantic -std=c89
 
 EXEC:=login
 SRCS:=\
